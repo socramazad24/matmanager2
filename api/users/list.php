@@ -1,55 +1,49 @@
 <?php
-error_reporting(0);
-ini_set('display_errors', 0);
+require_once __DIR__ . '/../config/headers.php';
+require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../../backend/config/Database.php';
+use matmanager\Database;
 
-session_start();
-require_once "../config/cors.php";
-require_once "../config/Database.php";
-require_once "../middleware/auth.php";
-
-use API\Config\Database;
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 try {
-    // Check authentication and role (only admin can list users)
+    // 🔒 Solo administradores pueden listar usuarios
     checkRole(['administrador']);
 
     if ($_SERVER["REQUEST_METHOD"] !== "GET") {
         http_response_code(405);
         echo json_encode(['success' => false, 'message' => 'Método no permitido']);
-        exit();
+        exit;
     }
 
     $db = new Database();
     $conex = $db->getConnection();
 
-    $consulta = "SELECT idEmployee, username, role, created_at FROM users ORDER BY created_at DESC";
-    $resultado = mysqli_query($conex, $consulta);
+    // ✅ Campos reales según tu base de datos
+    $query = "SELECT idEmployee, firstName, lastName, username, email, phone, role, date_reg FROM users ORDER BY idEmployee DESC";
+    $result = $conex->query($query);
 
-    if ($resultado) {
-        $users = [];
-        while ($row = $resultado->fetch_assoc()) {
-            $users[] = $row;
-        }
-
-        echo json_encode([
-            'success' => true,
-            'data' => $users
-        ]);
-    } else {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Error al obtener usuarios'
-        ]);
+    if (!$result) {
+        throw new Exception("Error en la consulta SQL: " . $conex->error);
     }
 
-    $db->close();
+    $users = [];
+    while ($row = $result->fetch_assoc()) {
+        $users[] = $row;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'data' => $users
+    ], JSON_UNESCAPED_UNICODE);
+
+    $conex->close();
 
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
         'message' => 'Error del servidor: ' . $e->getMessage()
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 }
-?>

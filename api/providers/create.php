@@ -32,7 +32,7 @@ try {
     $db = new Database();
     $conex = $db->getConnection();
 
-    $stmt = $conex->prepare("INSERT INTO Proveedores (nombreProveedor, telefono, email, direccion) VALUES (?, ?, ?, ?)");
+    $stmt = $conex->prepare("INSERT INTO Proovedores (nombreProveedor, telefono, email, direccion) VALUES (?, ?, ?, ?)");
     $stmt->bind_param(
         "ssss",
         $input['nombreProveedor'],

@@ -13,7 +13,7 @@ class Database {
     public function __construct() {
         $this->conn = new mysqli($this->host, $this->user, $this->pass, $this->dbname);
         if ($this->conn->connect_error) {
-            die("Error de conexión: " . $this->conn->connect_error);
+            die(json_encode(["status" => "error", "message" => "Error de conexión: " . $this->conn->connect_error]));
         }
     }
 

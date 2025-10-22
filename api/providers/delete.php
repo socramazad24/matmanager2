@@ -12,42 +12,40 @@ header('Content-Type: application/json; charset=utf-8');
 $response = [];
 
 try {
-    // ✅ Solo administrador puede eliminar
     checkRole(['administrador']);
 
     if ($_SERVER["REQUEST_METHOD"] !== "POST") {
         http_response_code(405);
-        echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+        $response = ['success' => false, 'message' => 'Método no permitido'];
+        echo json_encode($response);
         exit;
     }
 
-    // 📥 Leer el body JSON
     $input = json_decode(file_get_contents('php://input'), true);
 
-    if (empty($input['idMaterial'])) {
+    if (empty($input['idProveedor'])) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'ID de material requerido']);
+        $response = ['success' => false, 'message' => 'ID del proveedor requerido'];
+        echo json_encode($response);
         exit;
     }
 
-    // 🔗 Conexión a la base de datos
     $db = new Database();
     $con = $db->getConnection();
 
-    // ✅ idMaterial es VARCHAR → usamos "s" en lugar de "i"
-    $stmt = $con->prepare("DELETE FROM materiales WHERE idMaterial = ?");
-    $stmt->bind_param("s", $input['idMaterial']);
+    $stmt = $con->prepare("DELETE FROM proveedores WHERE idProveedor = ?");
+    $stmt->bind_param("i", $input['idProveedor']);
 
     if ($stmt->execute()) {
         if ($stmt->affected_rows > 0) {
-            $response = ['success' => true, 'message' => 'Material eliminado exitosamente'];
+            $response = ['success' => true, 'message' => 'Proveedor eliminado exitosamente'];
         } else {
             http_response_code(404);
-            $response = ['success' => false, 'message' => 'Material no encontrado'];
+            $response = ['success' => false, 'message' => 'Proveedor no encontrado'];
         }
     } else {
         http_response_code(500);
-        $response = ['success' => false, 'message' => 'Error al eliminar material: ' . $stmt->error];
+        $response = ['success' => false, 'message' => 'Error al eliminar proveedor: ' . $stmt->error];
     }
 
     $stmt->close();
@@ -55,10 +53,7 @@ try {
 
 } catch (Throwable $e) {
     http_response_code(500);
-    $response = [
-        'success' => false,
-        'message' => 'Error del servidor: ' . $e->getMessage()
-    ];
+    $response = ['success' => false, 'message' => 'Error del servidor: ' . $e->getMessage()];
 }
 
 $output = ob_get_clean();

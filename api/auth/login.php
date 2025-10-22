@@ -1,72 +1,39 @@
 <?php
-namespace login;
-session_start();
-
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
-
-require_once __DIR__ . "/../Database.php"; // ajusta la ruta si es necesario
+require_once __DIR__ . '/../config/headers.php';
+require_once __DIR__ . '/../../backend/config/Database.php';
 use matmanager\Database;
 
-class Login {
-    private $conex;
+$db = new Database();
+$con = $db->getConnection();
 
-    public function __construct() {
-        $db = new Database();
-        $this->conex = $db->getConnection();
-    }
+$input = json_decode(file_get_contents('php://input'), true);
+$username = $input['username'] ?? '';
+$password = $input['password'] ?? '';
 
-    public function login() {
-        if ($_SERVER["REQUEST_METHOD"] === "POST") { 
-            // Recibe los datos del body en JSON
-            $data = json_decode(file_get_contents("php://input"), true);
+$query = "SELECT * FROM users WHERE username = ? AND password = ?";
+$stmt = $con->prepare($query);
+$stmt->bind_param('ss', $username, $password);
+$stmt->execute();
+$result = $stmt->get_result();
 
-            $username = $data["username"] ?? '';
-            $password = $data["password"] ?? '';
+if ($result->num_rows === 1) {
+    $user = $result->fetch_assoc();
 
-            if (empty($username) || empty($password)) {
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Faltan credenciales"
-                ]);
-                exit;
-            }
+    $_SESSION['user'] = [
+        'username' => $user['username'],
+        'role' => $user['role']
+    ];
 
-            // Consulta segura con parámetros
-            $query = "SELECT * FROM users WHERE username = ? AND password = ?";
-            $stmt = $this->conex->prepare($query);
-            $stmt->bind_param("ss", $username, $password);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result && $result->num_rows === 1) {
-                $user = $result->fetch_assoc();
-                $_SESSION['username'] = $user['username'];
-
-                echo json_encode([
-                    "status" => "success",
-                    "message" => "Inicio de sesión exitoso",
-                    "role" => $user['role'],
-                    "username" => $user['username']
-                ]);
-            } else {
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Credenciales incorrectas"
-                ]);
-            }
-        } else {
-            echo json_encode([
-                "status" => "error",
-                "message" => "Método no permitido"
-            ]);
-        }
-
-        $this->conex->close();
-    }
+    echo json_encode([
+        'status' => 'success',
+        'message' => 'Inicio de sesión exitoso',
+        'user' => $_SESSION['user'],
+        'session_id' => session_id()
+    ]);
+} else {
+    http_response_code(401);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Credenciales inválidas'
+    ]);
 }
-
-$main = new Login();
-$main->login();

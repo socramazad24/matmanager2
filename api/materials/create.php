@@ -1,7 +1,5 @@
 <?php
-error_reporting(0);
-ini_set('display_errors', 0);
-
+ob_start(); // Captura cualquier salida inesperada
 session_start();
 require_once "../config/cors.php";
 require_once "../config/Database.php";
@@ -9,69 +7,94 @@ require_once "../middleware/auth.php";
 
 use API\Config\Database;
 
+header('Content-Type: application/json; charset=utf-8');
+
+$response = [];
+
 try {
-    // Check authentication and role
     checkRole(['administrador', 'gerente']);
 
-    // Only accept POST requests
     if ($_SERVER["REQUEST_METHOD"] !== "POST") {
         http_response_code(405);
         echo json_encode(['success' => false, 'message' => 'Método no permitido']);
-        exit();
+        exit;
     }
 
-    // Get JSON input
     $input = json_decode(file_get_contents('php://input'), true);
 
-    // Validate required fields
-    $required = ['MaterialName', 'Description', 'costoUnitario', 'cantidadMaterial', 'idProveedor'];
+    // ✅ Validar campos requeridos
+    $required = ['idMaterial', 'MaterialName', 'Description', 'costoUnitario', 'cantidadMaterial', 'idProveedor'];
     foreach ($required as $field) {
-        if (!isset($input[$field]) || empty($input[$field])) {
+        if (!isset($input[$field]) || $input[$field] === '') {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => "Campo requerido: $field"]);
-            exit();
+            echo json_encode(['success' => false, 'message' => "Campo requerido o vacío: $field"]);
+            exit;
         }
     }
 
-    // Connect to database
+    // 🔗 Conexión a la base de datos
     $db = new Database();
-    $conex = $db->getConnection();
+    $con = $db->getConnection();
 
-    // Insert material
-    $stmt = $conex->prepare("INSERT INTO Materiales (MaterialName, Description, costoUnitario, cantidadMaterial, idProveedor, idPedido) VALUES (?, ?, ?, ?, ?, ?)");
-    $idPedido = $input['idPedido'] ?? null;
+    // 🚫 Verificar duplicados
+    $check = $con->prepare("SELECT 1 FROM materiales WHERE idMaterial = ?");
+    $check->bind_param("s", $input['idMaterial']);
+    $check->execute();
+    $check->store_result();
+
+    if ($check->num_rows > 0) {
+        http_response_code(409);
+        $response = ['success' => false, 'message' => 'El ID de material ya existe'];
+        echo json_encode($response);
+        exit;
+    }
+    $check->close();
+
+    // 🧩 Preparar inserción
+    $stmt = $con->prepare("
+        INSERT INTO materiales (
+            idMaterial, MaterialName, Description, costoUnitario,
+            cantidadMaterial, idProveedor, idPedido, date_reg
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
     $stmt->bind_param(
-        "ssddss",
+        "sssdiiss",
+        $input['idMaterial'],
         $input['MaterialName'],
         $input['Description'],
         $input['costoUnitario'],
         $input['cantidadMaterial'],
         $input['idProveedor'],
-        $idPedido
+        $input['idPedido'],
+        $input['date_reg']
     );
 
     if ($stmt->execute()) {
-        echo json_encode([
+        $response = [
             'success' => true,
             'message' => 'Material creado exitosamente',
-            'data' => ['idMaterial' => $conex->insert_id]
-        ]);
+            'data' => ['idMaterial' => $input['idMaterial']]
+        ];
     } else {
         http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Error al crear material'
-        ]);
+        $response = ['success' => false, 'message' => 'Error al crear material: ' . $stmt->error];
     }
 
     $stmt->close();
     $db->close();
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Error del servidor: ' . $e->getMessage()
-    ]);
+    $response = ['success' => false, 'message' => 'Error del servidor: ' . $e->getMessage()];
 }
-?>
+
+// 🧹 Limpiar salida accidental
+$output = ob_get_clean();
+if (!empty($output)) {
+    $response['debug_output'] = $output;
+}
+
+// ✅ Respuesta final
+echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
