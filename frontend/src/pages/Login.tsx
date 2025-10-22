@@ -5,7 +5,7 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Package } from 'lucide-react';
 
-export const Login = () => {
+const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,8 +19,28 @@ export const Login = () => {
     setLoading(true);
 
     try {
-      await login(username, password);
-      navigate('/dashboard');
+      const res = await login(username, password);
+
+      // ✅ Si el login fue exitoso, redirige según el rol
+      if (res.status === 'success') {
+        const role = res.user.role;
+
+        switch (role) {
+          case 'administrador':
+            navigate('/dashboard');
+            break;
+          case 'gerente':
+            navigate('/orders');
+            break;
+          case 'bodeguero':
+            navigate('/materials');
+            break;
+          default:
+            navigate('/');
+        }
+      } else {
+        setError(res.message || 'Credenciales incorrectas');
+      }
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');
     } finally {
@@ -37,7 +57,9 @@ export const Login = () => {
               <Package className="w-10 h-10 text-dark-900" />
             </div>
             <h1 className="text-3xl font-bold text-dark-900 dark:text-white">MatManager</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">Sistema de Control de Materiales</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Sistema de Control de Materiales
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -82,3 +104,5 @@ export const Login = () => {
     </div>
   );
 };
+
+export default Login;

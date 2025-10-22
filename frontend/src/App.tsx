@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { ThemeProvider } from '@/hooks/useTheme';
 import { Layout } from '@/components/Layout';
-import { Login } from '@/pages/Login';
+import Login from '@/pages/Login'; 
 import { Dashboard } from '@/pages/Dashboard';
 import { Materials } from '@/pages/Materials';
 import { Orders } from '@/pages/Orders';
