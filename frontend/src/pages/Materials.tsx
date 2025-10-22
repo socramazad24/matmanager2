@@ -41,13 +41,13 @@ export const Materials = () => {
     if (material) {
       setEditingMaterial(material);
       setFormData({
-        idMaterial: material.idMaterial,
-        MaterialName: material.MaterialName,
-        Description: material.Description,
-        costoUnitario: material.costoUnitario.toString(),
-        cantidadMaterial: material.cantidadMaterial.toString(),
-        idProveedor: material.idProveedor,
-        idPedido: material.idPedido,
+        idMaterial: material.idMaterial || '',
+        MaterialName: material.MaterialName || '',
+        Description: material.Description || '',
+        costoUnitario: String(material.costoUnitario || ''),
+        cantidadMaterial: String(material.cantidadMaterial || ''),
+        idProveedor: material.idProveedor || '',
+        idPedido: material.idPedido || '',
       });
     } else {
       setEditingMaterial(null);
@@ -71,28 +71,40 @@ export const Materials = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
       if (editingMaterial) {
+        // 🔧 Actualizar material existente
         await ApiService.updateMaterial(editingMaterial.idMaterial, {
           MaterialName: formData.MaterialName,
           Description: formData.Description,
-          costoUnitario: parseInt(formData.costoUnitario),
+          costoUnitario: parseFloat(formData.costoUnitario),
           cantidadMaterial: parseInt(formData.cantidadMaterial),
           idProveedor: formData.idProveedor,
           idPedido: formData.idPedido,
         });
       } else {
+        // ✅ Generar ID automáticamente si está vacío
+        let generatedId = formData.idMaterial?.trim();
+        if (!generatedId) {
+          const randomSuffix = Math.floor(Math.random() * 90000 + 10000);
+          generatedId = `Mat${randomSuffix}`;
+        }
+
+        console.log('🧩 ID generado antes de crear:', generatedId);
+
         await ApiService.createMaterial({
-          idMaterial: formData.idMaterial,
+          idMaterial: generatedId,
           MaterialName: formData.MaterialName,
           Description: formData.Description,
-          costoUnitario: parseInt(formData.costoUnitario),
+          costoUnitario: parseFloat(formData.costoUnitario),
           cantidadMaterial: parseInt(formData.cantidadMaterial),
           idProveedor: formData.idProveedor,
           idPedido: formData.idPedido,
           date_reg: new Date().toISOString().split('T')[0],
         });
       }
+
       handleCloseModal();
       loadMaterials();
     } catch (error) {
@@ -102,11 +114,23 @@ export const Materials = () => {
   };
 
   const handleDelete = async (id: string) => {
+    console.log('🧩 Eliminando material con ID:', id);
+
+    if (!id || typeof id !== 'string') {
+      alert('ID de material inválido o no definido');
+      return;
+    }
+
     if (!confirm('¿Está seguro de eliminar este material?')) return;
 
     try {
-      await ApiService.deleteMaterial(id);
-      loadMaterials();
+      const response = await ApiService.deleteMaterial(id);
+      if (response.success) {
+        alert(response.message);
+        loadMaterials();
+      } else {
+        alert(response.message || 'Error al eliminar el material');
+      }
     } catch (error) {
       console.error('Error al eliminar material:', error);
       alert('Error al eliminar el material');
@@ -203,7 +227,7 @@ export const Materials = () => {
                     {material.Description}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-900 dark:text-white">
-                    ${material.costoUnitario.toLocaleString()}
+                    ${material.costoUnitario}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-900 dark:text-white">
                     {material.cantidadMaterial}
@@ -242,10 +266,10 @@ export const Materials = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!editingMaterial && (
             <Input
-              label="ID Material"
+              label="ID Material (opcional, se genera automático)"
               value={formData.idMaterial}
               onChange={(e) => setFormData({ ...formData, idMaterial: e.target.value })}
-              required
+              placeholder="Ej: Mat1001"
             />
           )}
           <Input

@@ -24,7 +24,6 @@ export class ApiService {
     }
 
     if (!response.ok) {
-      // ⚠️ Si la sesión expiró, devolvemos un mensaje claro
       if (response.status === 401) {
         throw new Error('No autenticado. Por favor inicie sesión.');
       }
@@ -60,12 +59,12 @@ export class ApiService {
     return this.request<{ success: boolean; data: any[] }>('/materials/list.php');
   }
 
-  static async createMaterial(material: any) {
-    return this.request<{ success: boolean; message: string }>('/materials/create.php', {
-      method: 'POST',
-      body: JSON.stringify(material),
-    });
-  }
+ static async createMaterial(material: any) {
+  return this.request<{ success: boolean; message: string }>('/materials/create.php', {
+    method: 'POST',
+    body: JSON.stringify(material), // Enviamos TODO el objeto completo
+  });
+}
 
   static async updateMaterial(id: string, material: any) {
     return this.request<{ success: boolean; message: string }>('/materials/update.php', {
@@ -74,6 +73,12 @@ export class ApiService {
     });
   }
 
+  static async deleteMaterial(id: string) {
+  return this.request<{ success: boolean; message: string }>('/materials/delete.php', {
+    method: 'POST',
+    body: JSON.stringify({ idMaterial: id }), // ✅ Envía el campo correcto
+  });
+}
 
   // 🧩 USUARIOS
   static async getUsers() {
@@ -94,35 +99,12 @@ export class ApiService {
     });
   }
 
-  static async deleteUser(id: string) {
-  return this.request('/users/delete.php', {
-    method: 'POST', 
-    body: JSON.stringify({ idEmployee: id }),
-  });
-}
-
-  static async deleteProvider(id: string) {
-  return this.request('/providers/delete.php', {
-    method: 'POST',
-    body: JSON.stringify({ idProvider: id }),
-  });
-}
-
-static async deleteMaterial(id: string) {
-  return this.request('/materials/delete.php', {
-    method: 'POST',
-    body: JSON.stringify({ idMaterial: id }),
-  });
-}
-
-static async deleteOrder(id: string) {
-  return this.request('/orders/delete.php', {
-    method: 'POST',
-    body: JSON.stringify({ idOrder: id }),
-  });
-}
-
-
+  static async deleteUser(id: string | number) {
+    return this.request<{ success: boolean; message: string }>('/users/delete.php', {
+      method: 'POST',
+      body: JSON.stringify({ idEmployee: Number(id) }),
+    });
+  }
 
   // 🧩 PROVEEDORES
   static async getProviders() {
@@ -133,6 +115,13 @@ static async deleteOrder(id: string) {
     return this.request<{ success: boolean; message: string }>('/providers/create.php', {
       method: 'POST',
       body: JSON.stringify(provider),
+    });
+  }
+
+  static async deleteProvider(id: string | number) {
+    return this.request<{ success: boolean; message: string }>('/providers/delete.php', {
+      method: 'POST',
+      body: JSON.stringify({ idProveedor: Number(id) }), // ⚠️ igual que backend
     });
   }
 
@@ -147,5 +136,11 @@ static async deleteOrder(id: string) {
       body: JSON.stringify(order),
     });
   }
-}
 
+  static async deleteOrder(id: string | number) {
+    return this.request<{ success: boolean; message: string }>('/orders/delete.php', {
+      method: 'POST',
+      body: JSON.stringify({ idPedido: Number(id) }),
+    });
+  }
+}
